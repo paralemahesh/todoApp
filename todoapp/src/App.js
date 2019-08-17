@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { createStore } from 'redux';
+import { createStore, combineReducers } from 'redux';
 
 
 const visibilityFilter = (
@@ -22,25 +22,17 @@ const todos = (state = [], action) => {
         ...state,
         todo(undefined, action)
       ];
-      case 'TOGGLE_TODO':
-        return state.map(t => todo(t, action));
-      default:
-        return state;
+    case 'TOGGLE_TODO':
+      return state.map(t => todo(t, action));
+    default:
+      return state;
   }
 };
 
-const todoApp = (state = {}, action) => {
-    return {
-      todos: todos(
-        state.todos,
-        action
-      ),
-      visibilityFilter: visibilityFilter(
-        state.visibilityFilter,
-        action
-      )
-    };
-  };
+const todoApp = combineReducers({
+  todos,
+  visibilityFilter
+})
 
 const store = createStore(todoApp);
 
@@ -109,7 +101,7 @@ console.log('----------');
 console.log('Dispatching add todo.');
 
 store.subscribe(render);
-render();
+// render();
 
 
 export default render;
