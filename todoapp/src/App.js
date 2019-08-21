@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { createStore, combineReducers } from 'redux';
+import { Provider, connect } from 'react-redux';
 
 //---------------- REDUCERS -----------------//
 
@@ -57,49 +58,20 @@ const todo = (state, action) => {
   }
 };
 
-const store = createStore(todoApp);
-
 //---------------- ADDITIONAL FUNCTIONS -----------------//
 
-class VisibleTodoList extends React.Component{
-  componentDidMount(){
-    this.unsubscribe = store.subscribe(() => {
-      this.forceUpdate();
-    });
+const getVisibleTodos = (todos, visibilityFilter) => {
+
+  switch(visibilityFilter){
+    case 'SHOW_ALL':
+      return todos;
+    case 'SHOW_ACTIVE':
+      return todos.filter((todo) => !todo.completed);
+    case 'SHOW_INACTIVE':
+      return todos.filter((todo) => todo.completed);
+    default: return [];
   }
-
-  componentWillUnmount(){
-    this.unsubscribe();
-  }
-
-  getVisibleTodos(){
-    let state = store.getState();
-
-    switch(state.visibilityFilter){
-      case 'SHOW_ALL':
-        return state.todos;
-      case 'SHOW_ACTIVE':
-        return state.todos.filter((todo) => !todo.completed);
-      case 'SHOW_INACTIVE':
-        return state.todos.filter((todo) => todo.completed);
-      default: return [];
-    }
-  }
-
-  render(){
-
-    function onTodoClick(id){
-      store.dispatch({
-        type: 'TOGGLE_TODO',
-        id: id
-      });
-    }
-
-    return(
-      <TodoList todos={this.getVisibleTodos()} onTodoClick={onTodoClick}></TodoList>
-    );
-  };
-};
+}
 
 //**---------------- COMPONENTS -----------------***//
 
@@ -139,16 +111,18 @@ const TodoList = ({
   );
 };
 
-const AddTodo = () => {
+let nextTodoId = 0;
+let AddTodo = ({dispatch}) => {
+
   let inputText;
   return (
     <div>
       <input ref={input => { inputText = input }}></input>
       <button onClick={() => {
-        store.dispatch({
+        dispatch({
           type: 'ADD_TODO',
-          text: inputText.value,
-          id: nextTodoId
+          id: nextTodoId++,
+          text: inputText.value
         });
         inputText.value = '';
       }}>
@@ -157,6 +131,7 @@ const AddTodo = () => {
     </div>
   );
 }
+AddTodo = connect()(AddTodo)
 
 const Link = ({
   filter,
@@ -164,6 +139,7 @@ const Link = ({
   onClick,
   children
 }) => {
+  
   if(active){
     return (
       <span>{children}</span>
@@ -177,34 +153,8 @@ const Link = ({
   );
 };
 
-class TodoFilter extends React.Component{
-  componentDidMount(){
-    this.unsubscribe = store.subscribe(() => {
-      this.forceUpdate();
-    });
-  }
 
-  componentWillUnmount(){
-    this.unsubscribe();
-  }
-
-  render(){
-    const {filter,children} = this.props;
-
-    function onClick(filter){
-      store.dispatch({
-        type: 'SET_VISIBILITY_FILTER',
-        filter
-      });
-    }
-
-    return (
-      <Link filter={filter} active={store.getState().visibilityFilter === filter} onClick={onClick}>{children}</Link>
-    )
-  }
-}
-
-const Footer = currentFilter => {
+const Footer = () => {
   return (
     <div>
       Show : 
@@ -217,26 +167,67 @@ const Footer = currentFilter => {
 
 //---------------- CONTAINER COMPONENTS -----------------//
 
-let nextTodoId = 0;
-class TodoApp extends React.Component {
-  render(){
-    return (
-      <div style={{marginTop: '100px', textAlign: 'center'}}>
-        <AddTodo nextTodoId></AddTodo>
-        <VisibleTodoList></VisibleTodoList>
-        <Footer currentFilter={visibilityFilter}></Footer>
-      </div>
-    )
+const TodoApp = () => (
+  <div style={{marginTop: '100px', textAlign: 'center'}}>
+    <AddTodo></AddTodo>
+    <VisibleTodoList></VisibleTodoList>
+    <Footer></Footer>
+  </div>
+)
+
+const render = ()=> ReactDOM.render(
+  <Provider store={createStore(todoApp)}>
+    <TodoApp/>
+  </Provider>,
+  document.getElementById('root')
+);
+
+//----------------- Connected components -----------------//
+
+const mapStateToProps = (state) =>{
+  return {
+    todos: getVisibleTodos(state.todos, state.visibilityFilter)
+  }
+};
+
+const mapDispatchToProps = (dispatch) => {
+  return {
+    onTodoClick: (id) => {
+      dispatch({
+        type: 'TOGGLE_TODO',
+        id: id
+      })
+    }
   }
 }
 
-const render = () => {
-  ReactDOM.render(
-    <TodoApp/>,
-    document.getElementById('root')
-  );
+const VisibleTodoList = connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(TodoList);
+
+const mapTodoFilterStateToProps = (state, ownProps) => {
+  return {
+    filter: ownProps.filter,
+    active: state.visibilityFilter === ownProps.filter,
+    children: ownProps.children
+  }
 }
 
-store.subscribe(render);
+const mapTodoDispatchToProps = (dispatch) => {
+  return {
+    onClick: (filter) => {
+      dispatch({
+        type: 'SET_VISIBILITY_FILTER',
+        filter
+      });
+    }
+  }
+}
+
+const TodoFilter = connect(
+  mapTodoFilterStateToProps,
+  mapTodoDispatchToProps  
+)(Link)
 
 export default render;
