@@ -1,4 +1,4 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is a simplest version of a todo app created using React-redux.
 
 ## Available Scripts
 
